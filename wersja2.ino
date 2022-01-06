@@ -1,17 +1,18 @@
 // definicja pinów
-int latchPin = 4; // pis connected to shift registors
+int latchPin = 4; // piny połączone do rejestru przesównego
 int clockPin = 5;
 int dataPin = 3;
-int pins [8] = {6, 7, 8, 9, 10, 11, 12, 13}; // common cathode pins
+int pins [8] = {6, 7, 8, 9, 10, 11, 12, 13}; // piny połączone do kolumn matrycy (wspólne katody)
 
-#define XPIN A4
-#define YPIN A5
-#define SW 2
+#define XPIN A4 // joystick VRX
+#define YPIN A5 // joystick VRY
+
+#define SW 2 // przycisk zmiany programu
 #define LED 1
-#define POT A0
+#define POT A0 // potencjometr typu slider
 
 
-// zadeklarowane obrazki do wyświetlania
+// zadeklarowane obrazki do wyświetlania, każde 8 bitów to informacja które diody mają być załączone w danym wierszu
 byte UARROW[] = {B00011000, B00111100, B01111110, B11011011, B00011000, B00011000, B00011000, B00011000};
 byte DARROW[] = {B00011000, B00011000, B00011000, B00011000, B11011011, B01111110, B00111100, B00011000};
 byte RARROW[] = {B00001000, B00001100, B00000110, B11111111, B11111111, B00000110, B00001100, B00001000};
@@ -43,11 +44,11 @@ byte* tab[8]={col0,col1,col2,col3,col4,col5,col6,col7};
 
 // zmienne globalne - do odczytu wartości analogowych i zmiany progamu
 
-uint16_t x = 0;
+uint16_t x = 0;// x y p zmienne do przechowywania wartości analogowej joysticka i potencjometrów
 uint16_t y = 0;
 uint16_t p = 0;
-int xMap, yMap,pMap;
-volatile uint8_t iterator = 0;
+int xMap, yMap,pMap; // przeskalowane zmienne x y p
+volatile uint8_t iterator = 0; // odopiwada za aktualnie działający program
 
 
 void setup() {
@@ -55,38 +56,36 @@ void setup() {
   pinMode(latchPin, OUTPUT); // Pin configuration
   pinMode(clockPin, OUTPUT);
   pinMode(dataPin, OUTPUT);
-  for (int i = 0; i < 8; i++) { // for loop is used to configure common cathodes
+  for (int i = 0; i < 8; i++) { 
+    // pętla ustawiająca wspólne katody jako wyjścia wraz zapisaniem do nich stanu wysokiego.
+    //Późniejsza zmiana stanu na niski będzie zalączała poszczególne kolumny matrycy.
     pinMode(pins[i], OUTPUT);
     digitalWrite(pins[i], HIGH);
   }
+  // konfiguracja pinów potencjometru, joysticka, przycisku i diody LED
   pinMode(POT,INPUT);
   pinMode(A4, INPUT);
   pinMode(A5, INPUT);
   pinMode(SW, INPUT_PULLUP);
   pinMode(LED,OUTPUT);
 
-//attachInterrupt(digitalPinToInterrupt(SW), change,RISING); // przerwanie od przycisku
 }
 
 void loop() {
-  
-  // wybór programu odbywa się na podstawie wartości iteratora 
-  // zadeklarowano 5 programow (3 programy z obsluga joysticka, 1 program wyswietlajacy całą tablice, 1 program wyswietlający kolumny na podstawie suwaka)
+  /* wybór programu odbywa się na podstawie wartości iteratora 
+   zadeklarowano 5 programow (3 programy z obsluga joysticka, 1 program wyswietlajacy całą tablice, 
+   1 program wyswietlający kolumny na podstawie położenia suwaka)
+   zaimplementowano resetowanie iteratora, aby po przełączeniu ostatniego programu załączył się program 1
+  */
   if(digitalRead(SW)==0)
   {
     delay(200);
     iterator++;
-    Serial.print(digitalRead(SW));
-Serial.print('\n');
-  }
-  
+  }  
   if (iterator > 4)
   {
     iterator = 0;
   }
-Serial.print(iterator);
-Serial.print('\n');
-
 
 // odczyt wartości z joysticka i mapowanie 
   x = analogRead(XPIN);
@@ -94,6 +93,7 @@ Serial.print('\n');
   xMap = map(x, 0, 1023, 0, 10);
   yMap = map(y, 0, 1023, 10, 0);
 
+// wybór programu
   if (iterator == 1)
   {
     digitalWrite(LED,LOW);
@@ -122,13 +122,10 @@ Serial.print('\n');
     linijka(pMap);
 
   }
-
-
-
 }
 //////////////////////////////////////////////////////////////////////////////////////////////////////
 /*void linijka(int pMap)
- * funkcja zapalająca liczbę kolumn na wyświetlaczu w zależności od wartości pMap 1-8
+ * funkcja zapalająca liczbę kolumn na wyświetlaczu w zależności od wartości zmiennej pMap (1-8)
  */
 void linijka(int pMap)
 { 
@@ -136,8 +133,10 @@ drawScreen(tab[pMap]);
   
 }
 /*void drawScreen(byte ch[8])
- * funkcja wyswietlajaca obrazek na wyswietlaczu na podstawie podanej tablicy bitów - ch[8]
+ * funkcja wyswietlajaca obrazek na wyswietlaczu na podstawie podanej tablicy bajtów ch[8]
  * do wyswietlania wykorzystano rejestr przesuwny 74HC595N
+ * podanie stanu niskiego na pins powoduje zapalenie kolumn, a shitfout kolejno załącza wiersze matrycy
+ * taka kombinacja daje nam wynikowy obrazek, który możemy obserwować na matrycy
  */
 void drawScreen(byte ch[8]) { // Method do the multiplexing
   for (int j = 0; j < 8; j++) {
@@ -153,11 +152,10 @@ void drawScreen(byte ch[8]) { // Method do the multiplexing
     digitalWrite(pins[j], HIGH);
 
   }
-
-
 }
 /*void sterowanie(uint16_t x, uint16_t y, byte* U, byte* D, byte* R, byte* L)
  * funkcja wyswietlająca obrazek na matrycy na podstawie wychylenia gałki joysticka
+ * każdy warunek określa wychylenie w jedną ze stron-góra-prawo-lewo
  * 
  */
 void sterowanie(uint16_t x, uint16_t y, byte* U, byte* D, byte* R, byte* L)
@@ -183,15 +181,4 @@ void sterowanie(uint16_t x, uint16_t y, byte* U, byte* D, byte* R, byte* L)
   {
     drawScreen(BLANK);
   }
-  
-
-}
-/*void change()
- * inkrementuje wartosc iteratora podczas wcisnięcia przycisku
- */
-void change()
-{
-iterator++;
-Serial.print(digitalRead(SW));
-Serial.print('\n');
 }
