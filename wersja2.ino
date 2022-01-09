@@ -90,6 +90,7 @@ void loop() {
 // odczyt wartości z joysticka i mapowanie 
   x = analogRead(XPIN);
   y = analogRead(YPIN);
+//  delay(10);
   xMap = map(x, 0, 1023, 0, 10);
   yMap = map(y, 0, 1023, 10, 0);
 
@@ -158,27 +159,29 @@ void drawScreen(byte ch[8]) { // Method do the multiplexing
  * każdy warunek określa wychylenie w jedną ze stron-góra-prawo-lewo
  * 
  */
-void sterowanie(uint16_t x, uint16_t y, byte* U, byte* D, byte* R, byte* L)
+void sterowanie(int x, int y, byte* U, byte* D, byte* R, byte* L)
 {
-  
-  if (x < 2 && (y > 3 && y < 8))
-  {
-    drawScreen(U);
-  }
-  else if (x > 8 && (y > 3 && y < 8))
-  {
-    drawScreen(D);
-  }
-  if ( y > 8 )
+  //&& (y > 3 && y < 8)
+  if (x < 3 )
   {
     drawScreen(R);
   }
-  else if (y < 2 )
+  //&& (y > 3 && y < 8)
+  if (x > 7 )
   {
     drawScreen(L);
   }
-  else 
+  if ( y > 7 )
+  {
+    drawScreen(U);
+  }
+  if (y < 3 )
+  {
+    drawScreen(D);
+  }
+  if(!(y < 3 )&& !( y > 7 )&& !(x > 7 ) && !(x < 3 ))
   {
     drawScreen(BLANK);
   }
+  //delay(10);    
 }
